@@ -66,7 +66,7 @@ public class Product {
         this.stock = stock;
     }
 
-    // getter setter
+   
 
     @Override
     public String toString() {

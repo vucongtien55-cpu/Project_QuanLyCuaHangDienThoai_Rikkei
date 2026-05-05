@@ -8,44 +8,50 @@ import java.util.List;
 
 public class InvoiceDAOImpl implements IInvoiceDAO {
     @Override
-    public void create(int customerId, List<InvoiceDetail> list) {
+    public void create(int customerId, List<InvoiceDetail> list){
         Connection conn = null;
-        try {
+
+        try{
             conn = DBUtil.getConnection();
             conn.setAutoCommit(false);
 
-            double total = list.stream().mapToDouble(d -> d.getQuantity() * d.getPrice()).sum();
 
+            String sql = "INSERT INTO invoice(customer_id) VALUES(?)";
+            PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            ps.setInt(1, customerId);
+            ps.executeUpdate();
 
-            String sql1 = "INSERT INTO invoice(customer_id, total_amount) VALUES(?, ?)";
-            PreparedStatement ps1 = conn.prepareStatement(sql1, Statement.RETURN_GENERATED_KEYS);
-            ps1.setInt(1, customerId);
-            ps1.setDouble(2, total);
-            ps1.executeUpdate();
-
-            ResultSet rs = ps1.getGeneratedKeys();
+            ResultSet rs = ps.getGeneratedKeys();
             int invoiceId = 0;
-            if (rs.next()) {
+            if(rs.next()){
                 invoiceId = rs.getInt(1);
             }
 
-            String sql2 = "INSERT INTO invoice_details(invoice_id, product_id, quantity, unit_price) VALUES(?,?,?,?)";
-            PreparedStatement ps2 = conn.prepareStatement(sql2);
-            for (InvoiceDetail d : list) {
-                ps2.setInt(1, invoiceId);
-                ps2.setInt(2, d.getProductId());
-                ps2.setInt(3, d.getQuantity());
-                ps2.setDouble(4, d.getPrice());
-                ps2.addBatch();
+            String detailSql = "INSERT INTO invoice_detail(invoice_id, product_id, quantity, unit_price) VALUES(?,?,?,?)";
+            PreparedStatement psDetail = conn.prepareStatement(detailSql);
+
+            for(InvoiceDetail i : list){
+                psDetail.setInt(1, invoiceId);
+                psDetail.setInt(2, i.getProductId());
+                psDetail.setInt(3, i.getQuantity());
+                psDetail.setDouble(4, i.getPrice());
+                psDetail.executeUpdate();
             }
-            ps2.executeBatch();
 
             conn.commit();
-        } catch (Exception e) {
-            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            System.out.println("Tao hoa don thanh cong!");
+
+        }catch(Exception e){
+            try{
+                if(conn != null) conn.rollback();
+            }catch(Exception ex){}
+            System.out.println("Loi khi tao hoa don!");
             e.printStackTrace();
-        } finally {
-            if (conn != null) try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+
+        }finally{
+            try{
+                if(conn != null) conn.close();
+            }catch(Exception e){}
         }
     }
 }
